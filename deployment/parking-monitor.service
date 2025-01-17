@@ -1,0 +1,15 @@
+[Unit]
+Description=Parking Monitor Service
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=simple
+WorkingDirectory=/home/pi/parking-monitor
+ExecStart=/usr/bin/docker compose -p pm up
+ExecStartPost=/bin/bash -c 'sleep 5 && curl http://localhost:3031/reset-usb && sleep 1 && curl http://localhost:3031/clock'
+ExecStop=/usr/bin/docker compose -p pm down
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

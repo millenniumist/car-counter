@@ -1,0 +1,6 @@
+2024-12-06T07:48:29.423Z GET /charges?plateLetter=%E0%B8%81%E0%B8%82&plateNumber=4321&plateProvince=%E0%B8%81%E0%B8%A3%E0%B8%B8%E0%B8%87%E0%B9%80%E0%B8%97%E0%B8%9E%E0%B8%81%E0%B8%A3&amount=100 204 0.664 ms - -
+Fri, 06 Dec 2024 07:50:34 GMT GET /charges?plateLetter=กข&plateNumber=4321&plateProvince=กรุงเทพกร&amount=100 204 0.903 ms undefined undefined
+Fri, 06 Dec 2024 07:53:21 GMT GET 204 /charges?plateLetter=กข&plateNumber=4321&plateProvince=กรุงเทพกร&amount=100 --2.006ms undefined undefined
+2024-12-06T07:58:01.941Z GET 204 /charges?plateLetter=กข&plateNumber=4321&plateProvince=กรุงเทพกร&amount=100 --0.901ms undefined undefined
+2024-12-06T07:58:23.204Z [204] /charges?plateLetter=กข&plateNumber=4321&plateProvince=กรุงเทพกร&amount=100 0.832ms
+2024-12-06T08:34:40.727Z [204] /charges?plateLetter=กข&plateNumber=4351&plateProvince=กรุงเทพกร&amount=100 1.015ms
