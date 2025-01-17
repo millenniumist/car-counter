@@ -1,82 +1,153 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <title>Parking Monitor</title>
-    <style>
-      body {
-        padding: 20px;
-        font-family: Arial, sans-serif;
-      }
-      .display-box {
-        border: 1px solid #ccc;
-        padding: 10px;
-        margin: 10px 0;
-        width: 300px;
-      }
-      .control-panel {
-        margin: 20px 0;
-      }
-      button {
-        margin: 5px;
-        padding: 10px;
-      }
-    </style>
+    <title>Car Counter System</title>
+    <link href="/output.css" rel="stylesheet">
   </head>
-  <body>
-    <h1>Parking Monitor Display</h1>
-
-    <div class="display-box">
-      <h3>License Plate</h3>
-      <p id="plateLine1"><%= displayPlateLine1 %></p>
-      <p id="plateLine2"><%= displayPlateLine2 %></p>
+  <body class="bg-gray-100 min-h-screen p-8">
+    <!-- Add Language Switch -->
+    <div class="absolute top-4 right-4 flex items-center gap-2">
+      <span class="text-gray-600">
+        <span class="lang-en">🌐 Language:</span>
+        <span class="lang-th hidden">🌐 ภาษา:</span>
+      </span>
+      <select id="languageSelect" class="border rounded-md px-3 py-2 cursor-pointer hover:border-blue-500" onchange="switchLanguage(this.value)">
+        <option value="en">🇺🇸 English</option>
+        <option value="th">🇹🇭 ไทย</option>
+      </select>
     </div>
 
-    <div class="display-box">
-      <h3>Parking Fee</h3>
-      <p id="feeLine1">฿<%= displayFeeLine1 %></p>
-    </div>
+    <div class="max-w-3xl mx-auto">
+      <h1 class="text-3xl font-bold text-gray-800 mb-8">
+        <span class="lang-en">Car Counter Control Panel</span>
+        <span class="lang-th hidden">แผงควบคุมระบบนับรถ</span>
+      </h1>
 
-    <div class="control-panel">
-      <button onclick="showClock()">Show Clock</button>
-      <button onclick="showThankYou()">Show Thank You</button>
+      <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+        <h2 class="text-xl font-semibold text-gray-700 mb-4">
+          <span class="lang-en">Current Status</span>
+          <span class="lang-th hidden">สถานะปัจจุบัน</span>
+        </h2>
+        <div class="grid grid-cols-3 gap-4">
+          <div class="text-center">
+            <h3 class="text-gray-600">
+              <span class="lang-en">Available Spaces</span>
+              <span class="lang-th hidden">ช่องจอดว่าง</span>
+            </h3>
+            <span id="availableSpaces" class="text-2xl font-bold text-blue-600"><%= availableSpaces %></span>
+          </div>
+          <div class="text-center">
+            <h3 class="text-gray-600">
+              <span class="lang-en">Cars Parked</span>
+              <span class="lang-th hidden">รถที่จอดอยู่</span>
+            </h3>
+            <span id="carsParked" class="text-2xl font-bold text-green-600"><%= carsParked %></span>
+          </div>
+          <div class="text-center">
+            <h3 class="text-gray-600">
+              <span class="lang-en">Total Capacity</span>
+              <span class="lang-th hidden">ความจุทั้งหมด</span>
+            </h3>
+            <span id="totalCapacity" class="text-2xl font-bold text-purple-600"><%= totalCapacity %></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-lg shadow-md p-6">
+        <h3 class="text-xl font-semibold text-gray-700 mb-4">
+          <span class="lang-en">Adjust Car Count</span>
+          <span class="lang-th hidden">ปรับจำนวนรถ</span>
+        </h3>
+        <div class="flex gap-4 mb-8">
+          <button onclick="adjustCount(1)" class="bg-red-500 hover:bg-red-600 text-white px-6 py-2 rounded-md">-1</button>
+          <button onclick="adjustCount(-1)" class="bg-green-500 hover:bg-green-600 text-white px-6 py-2 rounded-md">+1</button>
+        </div>
+
+        <div class="bg-gray-50 rounded-lg p-6">
+          <h3 class="text-xl font-semibold text-gray-700 mb-4">
+            <span class="lang-en">Manual Configuration</span>
+            <span class="lang-th hidden">ตั้งค่าด้วยตนเอง</span>
+          </h3>
+          <div class="space-y-4">
+            <div class="flex items-center gap-4">
+              <label class="text-gray-600">
+                <span class="lang-en">Set Available Spaces:</span>
+                <span class="lang-th hidden">ตั้งค่าช่องจอดว่าง:</span>
+              </label>
+              <input type="number" id="manualAvailable" min="0" class="border rounded-md px-3 py-2">
+              <button onclick="setManualCount()" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md">
+                <span class="lang-en">Set</span>
+                <span class="lang-th hidden">ตั้งค่า</span>
+              </button>
+            </div>
+            <div class="flex items-center gap-4">
+              <label class="text-gray-600">
+                <span class="lang-en">Configure Total Capacity:</span>
+                <span class="lang-th hidden">กำหนดความจุทั้งหมด:</span>
+              </label>
+              <input type="number" id="totalCapacityInput" min="1" class="border rounded-md px-3 py-2">
+              <button onclick="setTotalCapacity()" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md">
+                <span class="lang-en">Update</span>
+                <span class="lang-th hidden">อัพเดท</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <script>
-      // SSE Connection
       const evtSource = new EventSource("/events");
-      evtSource.onmessage = function (event) {
+      
+      evtSource.onmessage = function(event) {
         const data = JSON.parse(event.data);
         updateDisplay(data);
       };
 
       function updateDisplay(data) {
-        if (data.plateLetter && data.plateNumber) {
-          document.getElementById(
-            "plateLine1"
-          ).textContent = `${data.plateLetter} - ${data.plateNumber}`;
-        }
-
-        if (data.plateProvince) {
-          document.getElementById("plateLine2").textContent = data.plateProvince;
-        }
-
-        if (data.amount) {
-          document.getElementById("feeLine1").textContent = `฿${data.amount}`;
-        }
-
-        console.log("Display updated with:", data);
+        document.getElementById("availableSpaces").textContent = data.availableSpaces;
+        document.getElementById("carsParked").textContent = data.carsParked;
+        document.getElementById("totalCapacity").textContent = data.totalCapacity;
       }
 
-      function showClock() {
-        fetch("/clock");
+      function adjustCount(value) {
+        fetch(`/adjust-count?value=${value}`);
       }
 
-      function showThankYou() {
-        fetch("/thankyou");
+      function setManualCount() {
+        const value = document.getElementById("manualAvailable").value;
+        fetch(`/set-available?value=${value}`);
       }
 
-      // Handle page unload
-      window.onbeforeunload = function () {
+      function setTotalCapacity() {
+        const value = document.getElementById("totalCapacityInput").value;
+        fetch(`/set-capacity?value=${value}`);
+      }
+
+      function switchLanguage(lang) {
+        const enElements = document.querySelectorAll('.lang-en');
+        const thElements = document.querySelectorAll('.lang-th');
+        
+        if (lang === 'th') {
+          enElements.forEach(el => el.classList.add('hidden'));
+          thElements.forEach(el => el.classList.remove('hidden'));
+        } else {
+          enElements.forEach(el => el.classList.remove('hidden'));
+          thElements.forEach(el => el.classList.add('hidden'));
+        }
+        
+        // Save language preference
+        localStorage.setItem('preferred-language', lang);
+      }
+
+      // Load saved language preference
+      document.addEventListener('DOMContentLoaded', () => {
+        const savedLang = localStorage.getItem('preferred-language') || 'en';
+        document.getElementById('languageSelect').value = savedLang;
+        switchLanguage(savedLang);
+      });
+
+      window.onbeforeunload = function() {
         evtSource.close();
       };
     </script>

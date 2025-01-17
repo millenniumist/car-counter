@@ -4,13 +4,43 @@ const path = require("path");
 const SerialPortService = require("../services/serialPort");
 const { exec } = require("child_process");
 const fs = require("fs");
+const gpio = require('rpi-gpio');
 
 let persistedData = {};
 let viewMode = "CLOCK";
 let clockInterval;
 let currentTimeout = null;
+let parkingData = {
+  availableSpaces: 0,
+  carsParked: 0,
+  totalCapacity: 100
+};
 const BASE_URL = "http://localhost:3030";
 
+
+// Define GPIO pins for entrance and exit sensors
+const ENTRANCE_SENSOR_PIN = 17; // GPIO17
+const EXIT_SENSOR_PIN = 18;     // GPIO18
+
+// Setup GPIO pins
+gpio.setup(ENTRANCE_SENSOR_PIN, gpio.DIR_IN, gpio.EDGE_BOTH);
+gpio.setup(EXIT_SENSOR_PIN, gpio.DIR_IN, gpio.EDGE_BOTH);
+
+// Handle entrance sensor
+gpio.on('change', (channel, value) => {
+    if (channel === ENTRANCE_SENSOR_PIN && value === true) {
+        // Car detected at entrance, decrease available spaces
+        fetch(`${BASE_URL}/adjust-count?value=-1`);
+    }
+});
+
+// Handle exit sensor
+gpio.on('change', (channel, value) => {
+    if (channel === EXIT_SENSOR_PIN && value === true) {
+        // Car detected at exit, increase available spaces
+        fetch(`${BASE_URL}/adjust-count?value=1`);
+    }
+});
 const clearExistingTimers = () => {
   if (currentTimeout) {
     clearTimeout(currentTimeout);
@@ -70,19 +100,16 @@ const handleClockDisplay = () => {
 router.get("/", (req, res) => {
   try {
     clearExistingTimers();
-    const { plateLetter, plateNumber, plateProvince, amount } = req.query;
-    const isPlateInfoComplete = plateLetter && plateNumber && plateProvince;
-
-    const renderData = {
-      displayPlateLine1: isPlateInfoComplete ? `${plateLetter} - ${plateNumber}` : "",
-      displayPlateLine2: plateProvince,
-      displayFeeLine1: isPlateInfoComplete ? amount : "0.0",
-    };
-    res.render("index", renderData);
+    res.render("index", {
+      availableSpaces: parkingData.availableSpaces,
+      carsParked: parkingData.carsParked,
+      totalCapacity: parkingData.totalCapacity
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
+
 
 router.get("/plateInfo", (req, res) => {
   try {
@@ -213,31 +240,73 @@ router.get("/clear", (req, res) => {
   }
 });
 
-router.get("/events", (req, res) => {
+
+router.get("/adjust-count", (req, res) => {
   try {
-    res.setHeader("Content-Type", "text/event-stream");
-    res.setHeader("Cache-Control", "no-cache");
-    res.setHeader("Connection", "keep-alive");
-    res.flushHeaders();
-
-    const sendUpdate = () => {
-      try {
-        persistedData.viewMode = viewMode;
-        res.write(`data: ${JSON.stringify(persistedData)}\n\n`);
-      } catch (error) {
-        console.error('SSE update error:', error);
-      }
-    };
-
-    sendUpdate();
-    const intervalId = setInterval(sendUpdate, 1000);
-
-    req.on("close", () => {
-      clearInterval(intervalId);
-    });
+      const value = parseInt(req.query.value);
+      parkingData.availableSpaces = Math.max(0, Math.min(parkingData.totalCapacity, parkingData.availableSpaces + value));
+      parkingData.carsParked = parkingData.totalCapacity - parkingData.availableSpaces;
+      
+      SerialPortService.displayMessage(`Available:${parkingData.availableSpaces},Total:${parkingData.totalCapacity}`);
+      res.status(204).end();
   } catch (error) {
-    res.status(500).json({ error: error.message });
+      res.status(500).json({ error: error.message });
   }
 });
+
+router.get("/set-available", (req, res) => {
+  try {
+      const value = parseInt(req.query.value);
+      parkingData.availableSpaces = Math.max(0, Math.min(parkingData.totalCapacity, value));
+      parkingData.carsParked = parkingData.totalCapacity - parkingData.availableSpaces;
+      
+      SerialPortService.displayMessage(`Available:${parkingData.availableSpaces},Total:${parkingData.totalCapacity}`);
+      res.status(204).end();
+  } catch (error) {
+      res.status(500).json({ error: error.message });
+  }
+});
+
+router.get("/set-capacity", (req, res) => {
+  try {
+      const value = parseInt(req.query.value);
+      parkingData.totalCapacity = Math.max(1, value);
+      parkingData.availableSpaces = Math.min(parkingData.availableSpaces, parkingData.totalCapacity);
+      parkingData.carsParked = parkingData.totalCapacity - parkingData.availableSpaces;
+      
+      SerialPortService.displayMessage(`Available:${parkingData.availableSpaces},Total:${parkingData.totalCapacity}`);
+      res.status(204).end();
+  } catch (error) {
+      res.status(500).json({ error: error.message });
+  }
+});
+
+// Modify the existing events route to include parking data
+router.get("/events", (req, res) => {
+  try {
+      res.setHeader("Content-Type", "text/event-stream");
+      res.setHeader("Cache-Control", "no-cache");
+      res.setHeader("Connection", "keep-alive");
+      res.flushHeaders();
+
+      const sendUpdate = () => {
+          try {
+              res.write(`data: ${JSON.stringify(parkingData)}\n\n`);
+          } catch (error) {
+              console.error('SSE update error:', error);
+          }
+      };
+
+      sendUpdate();
+      const intervalId = setInterval(sendUpdate, 1000);
+
+      req.on("close", () => {
+          clearInterval(intervalId);
+      });
+  } catch (error) {
+      res.status(500).json({ error: error.message });
+  }
+});
+
 
 module.exports = router;

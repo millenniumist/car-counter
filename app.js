@@ -60,7 +60,7 @@ app.use(morgan((tokens, req, res) => {
     skip: (req) => req.url === '/favicon.ico'
 }));
 
-
+app.use(express.static('public'));
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
