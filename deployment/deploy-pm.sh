@@ -1,5 +1,5 @@
 #!/bin/bash
-PI_HOSTS=("pi@192.168.106.152" "pi@192.168.106.151" "pi@192.168.106.159"  "pi@192.168.106.154"  )
+PI_HOSTS=("pi@192.168.68.121" )
 PI_PATH="/home/pi/parking-monitor"
 
 # Function to update SSH known hosts
@@ -51,9 +51,11 @@ check_docker() {
     echo "Checking Docker Compose installation..."
     if ! ssh $PI_HOST "command -v docker-compose > /dev/null"; then
         echo "Installing Docker Compose on Pi..."
-        ssh $PI_HOST "sudo apt update && sudo apt install -y docker-compose"
+        ssh $PI_HOST "sudo apt update && \
+            sudo apt install -y docker-compose python3 python3-pip build-essential"
     fi
 }
+
 
 check_docker_daemon() {
     echo "Checking if Docker daemon is running..."
@@ -129,7 +131,7 @@ for PI_HOST in "${PI_HOSTS[@]}"; do
     ssh $PI_HOST "curl http://localhost:3031/reset-usb"
     sleep 1  # Allow USB device to fully initialize
     verify_usb_device
-    ssh $PI_HOST "curl http://localhost:3031/clock"
+    ssh $PI_HOST "curl http://localhost:3031/set-available?value=0"
 
 
     echo "Deployment complete!"

@@ -115,7 +115,16 @@ class SerialPortService {
         }, this.SCROLL_DELAY);
     }
     
-
+    static resetUSB() {
+        if (config.isDevelopment) {
+            console.log('Reset USB (development)');
+            return;
+        }
+    
+        fs.writeFileSync("/sys/bus/usb/devices/usb1/authorized", "0");
+        fs.writeFileSync("/sys/bus/usb/devices/usb1/authorized", "1");
+    }
+    
     static configurePort() {
         if (config.isDevelopment) {
             console.log('Development mode: Serial port configuration simulated');
